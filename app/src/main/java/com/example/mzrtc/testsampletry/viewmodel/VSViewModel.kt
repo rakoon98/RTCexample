@@ -124,4 +124,8 @@ class VSViewModel(
         }
     }
 
+    fun destroyPeerAndSocket(){
+        signalingClient.destroy()
+    }
+
 }

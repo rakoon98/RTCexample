@@ -3,12 +3,10 @@ package com.example.mzrtc.testsampletry.util.vns
 import android.app.Application
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import com.example.mzrtc.App
 import com.example.mzrtc.testsampletry.TryRTCClient
 import com.example.mzrtc.utils.setLogDebug
 import org.webrtc.*
-import java.lang.IllegalStateException
 
 class RTCPeerClient(
     val context : Application,
@@ -34,7 +32,6 @@ class RTCPeerClient(
     private val peerConnectionFactory by lazy { buildPeerConnectionFactory() }
     private val peerConnection by lazy { observer.buildPeerConnection() }
 
-    // media
     private val videoCapturer by lazy { context.getVideoCapturer() }
     private val localVideoSource by lazy { peerConnectionFactory.createVideoSource(false) }
     private val localAudioSource by lazy { peerConnectionFactory.createAudioSource(MediaConstraints()) }
@@ -163,5 +160,6 @@ class RTCPeerClient(
         iceCandidate?.let { candidate ->
             peerConnection?.addIceCandidate(candidate)
         }
+    
 
 }

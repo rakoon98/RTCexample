@@ -51,6 +51,9 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
                         setInitRender( local_view, remote_view )
                     }
                 }
+                DESTROY -> {
+                    destroy()
+                }
                 is MediaStream -> {
                     data?.videoTracks?.get(0)?.addSink(remote_view)
                 }
@@ -117,7 +120,14 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
 
     override fun onDestroy() {
         super.onDestroy()
-        vsViewModel.signalingClient.destroy()
+
+        destroy()
+    }
+
+    fun destroy(){
+        vsViewModel.destroyPeerAndSocket()
+        remote_view.release()
+        local_view.release()
     }
 
     fun observeLiveData(){
