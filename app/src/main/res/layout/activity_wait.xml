@@ -8,7 +8,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/connectCallBnt"
+        app:layout_constraintBottom_toTopOf="@id/connectCallBnt1"
         android:textSize="22sp"
         android:gravity="center"
         android:text="연결하러가양!!"
@@ -17,10 +17,19 @@
 
     <androidx.appcompat.widget.AppCompatButton
         android:text="연결!!"
-        android:id="@+id/connectCallBnt"
+        android:id="@+id/connectCallBnt1"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/connectCallBnt2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <androidx.appcompat.widget.AppCompatButton
+        android:text="연결!!"
+        android:id="@+id/connectCallBnt2"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/connectCallBnt1"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
