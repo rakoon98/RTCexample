@@ -1,7 +1,9 @@
 package com.example.mzrtc.testsampletry.view.vns
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -38,8 +40,18 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
         private const val CAMERA_PERMISSION = Manifest.permission.CAMERA
     }
 
+
+    var url = ""
+    var port = ""
+    var roomId = ""
+
     val channel = App.coChannel
-    val vsViewModel by lazy { VSViewModel(application) }
+    val vsViewModel by lazy { VSViewModel(application , url , port, roomId) }
+    val audioManager by lazy {
+        (applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).apply {
+            mode = AudioManager.FLAG_SHOW_UI
+        }
+    }
 
     val recevice = CoroutineScope(Dispatchers.Main).async {
         val receiveData = channel.channel.asFlow()
@@ -61,9 +73,24 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
         }
     }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        intent?.run {
+             url = getStringExtra("url")
+             port = getStringExtra("port")
+             roomId = getStringExtra("roomId")
+            setLogDebug("url = $url , port = $port , roomId = $roomId")
+        }
+
+        audioBtn.setOnCheckedChangeListener { buttonView, isChecked ->
+            when(isChecked){
+                true->{ audioManager.isSpeakerphoneOn = true }
+                false->{ audioManager.isSpeakerphoneOn = false }
+            }
+        }
 
         observeLiveData()
         // 카메라 권한 가져오고 다음일 진행하는 부분
@@ -120,14 +147,12 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
 
     override fun onDestroy() {
         super.onDestroy()
-
-        destroy()
+//        destroy()
     }
 
     fun destroy(){
-        vsViewModel.destroyPeerAndSocket()
-        remote_view.release()
-        local_view.release()
+//        vsViewModel.destroyPeerAndSocket()
+        finish()
     }
 
     fun observeLiveData(){

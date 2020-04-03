@@ -32,7 +32,10 @@ import org.webrtc.SurfaceViewRenderer
  *  1. Voice Screen 역할을 하는 ViewModel
  */
 class VSViewModel(
-    val context: Application
+    val context: Application,
+    val url : String,
+    val port : String,
+    val roomId: String
 ) : ViewModel() {
 
     val coChannel = App.coChannel
@@ -106,7 +109,9 @@ class VSViewModel(
             coChannel.run {
                 runMain { sendString("initView") }
             }
-            signalingClient = RTCSignalingClient()
+            signalingClient = RTCSignalingClient(
+                url = url, port = port, roomId = roomId
+            )
         }
 
     }

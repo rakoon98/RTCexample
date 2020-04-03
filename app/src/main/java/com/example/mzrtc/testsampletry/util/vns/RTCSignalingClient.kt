@@ -13,7 +13,9 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.*
 
 class RTCSignalingClient(
-
+    var url :String,
+    var port : String,
+    var roomId: String
 ) {
     // 이벤트 전달 코루틴 채널
     val channel = App.coChannel
@@ -21,7 +23,9 @@ class RTCSignalingClient(
     var socketOnListener :SocketOnListener? = null
 
     init {
-        connect("https://192.168.0.16", "8889", "hi")
+//        connect("https://192.168.0.16", "8889", "hi")
+//        connect("https://192.168.0.223", "8889", "")
+        connect(url,port,roomId)
     }
 
     fun connect (
@@ -81,7 +85,6 @@ class RTCSignalingClient(
                     } ?: run {
                         // 소켓 리스너 생성 에러
                     }
-
                     connect()
                 }
             }

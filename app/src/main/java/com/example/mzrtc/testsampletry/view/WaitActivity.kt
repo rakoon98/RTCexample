@@ -14,7 +14,11 @@ class WaitActivity : AppCompatActivity() {
         setContentView(R.layout.activity_wait)
 
         connectCallBnt1.setOnClickListener { startActivity(Intent(this, TryActivity::class.java)) }
-        connectCallBnt2.setOnClickListener { startActivity(Intent(this, VSActivity::class.java)) }
+        connectCallBnt2.setOnClickListener { startActivity(Intent(this, VSActivity::class.java).apply {
+            putExtra("url",url_.text.toString())
+            putExtra("port",port_.text.toString())
+            putExtra("roomId",roomId_.text.toString())
+        }) }
 
     }
 
