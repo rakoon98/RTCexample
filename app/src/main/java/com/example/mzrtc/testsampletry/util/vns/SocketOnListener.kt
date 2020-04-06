@@ -2,6 +2,8 @@ package com.example.mzrtc.testsampletry.util.vns
 
 import android.util.Log
 import com.example.mzrtc.App
+import com.example.mzrtc.model.data.VS_ACTIVITY
+import com.example.mzrtc.model.data.VS_VIEWMODEL
 import com.example.mzrtc.testsampletry.data.*
 import com.example.mzrtc.utils.setLogDebug
 import com.google.gson.Gson
@@ -53,6 +55,7 @@ class SocketOnListener(
     }
 
     fun sendRTCInfo(dataObject : Any?) = runBlocking {
+        setLogDebug("dataObject_data_is : $dataObject")
         socket.run {
             try{
                 dataObject?.let {
@@ -68,10 +71,11 @@ class SocketOnListener(
                                     put("type", "offer")
                                     put("sdp", dataObject.description)
                                 }
-                                setLogDebug("data is $dataObject")
+                                setLogDebug("dataObject_data_is [offer]: $dataObject")
                                 emit(Socket.EVENT_MESSAGE, jsonObject)
                             } else {
                                 // 가져온 데이터가 SessionDescription 이 아니라서 무효처리
+                                setLogDebug("offer data is not sessionDescription : $dataObject")
                             }
                         }
                         rtcJson.toLowerCase().contains("answer") -> {
@@ -81,13 +85,15 @@ class SocketOnListener(
                                     put("sdp", dataObject.description)
                                 }
 
-                                Log.d("요호호", "answer data -> ${dataObject.description}")
+                                setLogDebug("dataObject_data_is [answer]: $dataObject")
                                 emit(Socket.EVENT_MESSAGE, jsonObject)
                             } else {
                                 // 가져온 데이터가 SessionDescription 이 아니라서 무효처리
+                                setLogDebug("answer data is not sessionDescription : $dataObject")
                             }
                         }
                         rtcJson.toLowerCase().contains("candidate") -> {
+                            setLogDebug("dataObject_data_is [candidate]: $dataObject")
                             var can = (dataObject as IceCandidate)
                             var jsonObject = JSONObject().apply {
                                 put("type", "candidate")
@@ -114,18 +120,19 @@ class SocketOnListener(
 
     // 메시지를 받는것에 대한 프로세싱 하는 메소드
     private fun processingGetMessage(data: Any) {
-        setLogDebug("$data")
+        setLogDebug("processingGetMessage ==>> $data")
         when (data) {
             is String -> {
                 when (data) {
                     GOT_USER_MEDIA -> {
                         channel.run {
-                            runMain { sendString(CREATE_OFFER) }
+                            setLogDebug("got user media rebound")
+                            runMain { sendString(VS_VIEWMODEL,CREATE_OFFER) }
                         }
                     }
                     BYE -> {
                         channel.run {
-                            runMain { sendString(DESTROY) }
+                            runMain { sendString(VS_ACTIVITY,DESTROY) }
                         }
                     }
                 }
@@ -133,17 +140,16 @@ class SocketOnListener(
             else -> {
                 try{
                     val info = JSONObject("$data")
-                    val type = info["type"]
-                    when(type){
+                    when(info["type"]){
                         OFFER -> { // offer 를 받았으면 offer SessionDescription 을 생성하여 전달
                             var sdp = info["sdp"]
                             var sessionDescription = SessionDescription( SessionDescription.Type.OFFER, "$sdp" )
-                            channel.run { setLogDebug("send sd offer"); runMain { sendSessionDescription(OFFER, sessionDescription) } }
+                            channel.run { setLogDebug("send sd offer"); runMain { sendSessionDescription(VS_VIEWMODEL,OFFER, sessionDescription) } }
                         }
                         ANSWER -> { // answer 를 받았으면 answer SessionDescription 을 생성하여 전달
                             var sdp = info["sdp"]
                             var sessionDescription = SessionDescription( SessionDescription.Type.ANSWER, "$sdp" )
-                            channel.run { runMain { sendSessionDescription(ANSWER, sessionDescription) } }
+                            channel.run { runMain { sendSessionDescription(VS_VIEWMODEL,ANSWER, sessionDescription) } }
                         }
                         CANDIDATE -> { // candidate 를 받았으면 IceCandidate 를 생성하여 전달
                             var id = "${info["id"]}"
@@ -151,11 +157,11 @@ class SocketOnListener(
                             var candidate = "${info["candidate"]}"
                             var iceCandidate = IceCandidate( id, label, candidate )
 
-                            channel.run { runMain { sendCandidate(iceCandidate) } }
+                            channel.run { runMain { sendCandidate(VS_VIEWMODEL,iceCandidate) } }
                         }
                     }
                 } catch (e:Exception) {
-                    setLogDebug("$e")
+                    setLogDebug("애러 : $e")
                 }
             }
         }

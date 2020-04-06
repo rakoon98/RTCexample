@@ -7,6 +7,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.mzrtc.App
+import com.example.mzrtc.model.data.VS_ACTIVITY
+import com.example.mzrtc.model.data.VS_VIEWMODEL
 import com.example.mzrtc.testsampletry.data.ANSWER
 import com.example.mzrtc.testsampletry.data.CREATE_OFFER
 import com.example.mzrtc.testsampletry.data.OFFER
@@ -46,7 +48,7 @@ class VSViewModel(
     var progressStatus : MutableLiveData<Boolean> = MutableLiveData<Boolean>().apply{ value = true }
 
     val recevice = CoroutineScope(Dispatchers.Main).async {
-        val receiveData = coChannel.channel.asFlow()
+        val receiveData = coChannel.vmChannel.asFlow()
         receiveData.collect {  data -> // 받은 아이들을 수집하여 그것을 진행한다.
             setLogDebug("receive Data : $data")
             when( data ) {
@@ -62,6 +64,7 @@ class VSViewModel(
                             progressStatus.postValue(false)
                         }
                         ANSWER -> {
+                            setLogDebug("get sd answer")
                             peerClient.run { onRemoteSessionReceived(data.description) }
                             progressStatus.postValue(false)
                         }
@@ -78,7 +81,7 @@ class VSViewModel(
         override fun onCreateSuccess(p0: SessionDescription?) {
             super.onCreateSuccess(p0)
             p0?.let {
-                setLogDebug("onCreateSuccess")
+                setLogDebug("onCreateSuccess : app sdp Observer send rtc Info  -->>> ${it.type} | ${it.description}")
                 signalingClient.socketOnListener?.sendRTCInfo(it)
             }
         }
@@ -100,32 +103,43 @@ class VSViewModel(
 
                     override fun onAddStream(mediaStream: MediaStream?) {
                         super.onAddStream(mediaStream)
-                        coChannel.run{ sendMediaStream(mediaStream) }
+                        coChannel.run{ sendMediaStream(VS_VIEWMODEL, mediaStream) }
                     }
                 })
 
         peerClient.apply {
             // 나와 상대방 서피스뷰 초기화
             coChannel.run {
-                runMain { sendString("initView") }
+                setLogDebug("onCameraPermissionGranted: initView")
+                runMain { sendString(VS_ACTIVITY,"initView") }
             }
-            signalingClient = RTCSignalingClient(
-                url = url, port = port, roomId = roomId
-            )
+            signalingClient = RTCSignalingClient(url = url, port = port, roomId = roomId)
+//            CoroutineScope(Dispatchers.Main).launch {
+//                signalingClient.connect(url = url, port = port, roomId = roomId)
+//            }
+//            CoroutineScope(Dispatchers.Main).launch {
+//                // if have some error during connect, show error message
+//                if(signalingClient.connect(url = url, port = port, roomId = roomId)) else {
+//                    // error url or port or roomId is null : 에러로 모든 자원해제후 재시도 하거나 에러 띄우고 다시 들어오라고 띄우면 될듯
+//                }
+//            }
         }
 
     }
 
     // render initial
     fun setInitRender(
-        local : SurfaceViewRenderer,
-        remote : SurfaceViewRenderer
+        local : SurfaceViewRenderer? = null,
+        remote : SurfaceViewRenderer? = null
     ){
         peerClient.run {
-            local.initSurfaceView()
-            local.startLocalVideoCapture()
-
-            remote.initSurfaceView()
+            local?.run {
+                initSurfaceView()
+                startLocalVideoCapture()
+            }
+            remote?.run {
+                initSurfaceView()
+            }
         }
     }
 

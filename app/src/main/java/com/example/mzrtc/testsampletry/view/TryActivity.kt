@@ -41,20 +41,20 @@ open class TryActivity : AppCompatActivity() {
     open lateinit var signalingClient : TrySignalingClient
 //    private lateinit var signalingClient : SignallingClient
 
-    val recevice = CoroutineScope(Dispatchers.Main).async {
-        val receiveData = App.coChannel.channel.asFlow()
-        receiveData.collect {  data -> // 받은 아이들을 수집하여 그것을 진행한다.
-            setLogDebug( "data is  : $data " )
-            Toast.makeText(this@TryActivity, "받음",Toast.LENGTH_SHORT).show()
-            when( data ) {
-                CREATE_OFFER -> {
-                    setLogDebug( "$CREATE_OFFER : 실행함 " )
-                    Toast.makeText(this@TryActivity, "createoffer",Toast.LENGTH_SHORT).show()
-                    rtcClient.call(sdpObserver)
-                }
-            }
-        }
-    }
+//    val recevice = CoroutineScope(Dispatchers.Main).async {
+////        val receiveData = App.coChannel.channel.asFlow()
+//        receiveData.collect {  data -> // 받은 아이들을 수집하여 그것을 진행한다.
+//            setLogDebug( "data is  : $data " )
+//            Toast.makeText(this@TryActivity, "받음",Toast.LENGTH_SHORT).show()
+//            when( data ) {
+//                CREATE_OFFER -> {
+//                    setLogDebug( "$CREATE_OFFER : 실행함 " )
+//                    Toast.makeText(this@TryActivity, "createoffer",Toast.LENGTH_SHORT).show()
+//                    rtcClient.call(sdpObserver)
+//                }
+//            }
+//        }
+//    }
 
     open val sdpObserver = object: AppSdpObserver(){
         override fun onCreateSuccess(p0: SessionDescription?) {
@@ -72,9 +72,7 @@ open class TryActivity : AppCompatActivity() {
 
     // 카메라 권한
     private fun checkCameraPermission(){
-        if(ContextCompat.checkSelfPermission(this,
-                CAMERA_PERMISSION
-            ) != PackageManager.PERMISSION_GRANTED ){
+        if(ContextCompat.checkSelfPermission(this, CAMERA_PERMISSION) != PackageManager.PERMISSION_GRANTED ){
             requestCameraPermission()
         } else {
             Log.d("요호호","가즈아")

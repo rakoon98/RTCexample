@@ -19,9 +19,6 @@ class RTCPeerClient(
         const val AUDIO_TRACK_ID = "ARDAMSa0"
     }
 
-    // coroutines channel
-    val channel = App.coChannel.channel
-
     // eglbase
     private val rootEglbase : EglBase = EglBase.create()
 
@@ -82,18 +79,22 @@ class RTCPeerClient(
     // initialize video capturer
     fun Context.getVideoCapturer() =
         Camera2Enumerator(this).run {
-            deviceNames.find { dn ->
-                isFrontFacing(dn)
-            } ?. let { c2e ->
-                createCapturer( c2e , null )
-            } ?: throw IllegalStateException()
+            try{
+                deviceNames.find { dn ->
+                    isFrontFacing(dn)
+                } ?. let { c2e ->
+                    createCapturer( c2e , null )
+                } ?: throw IllegalStateException()
+            }catch (e:Exception){
+                setLogDebug( "Camera2Enumerator Exception : $e" )
+            }
         }
 
     // start local video capturer
     fun SurfaceViewRenderer.startLocalVideoCapture(){
         var surfaceTextureHelper = SurfaceTextureHelper.create(Thread.currentThread().name, rootEglbase.eglBaseContext)
         (videoCapturer as VideoCapturer).initialize(surfaceTextureHelper, this.context, localVideoSource.capturerObserver)
-        videoCapturer.startCapture(240, 240, 60)
+        (videoCapturer as VideoCapturer).startCapture(240, 240, 60)
 
         val localVideoTrack = peerConnectionFactory.createVideoTrack(TryRTCClient.VIDEO_TRACK_ID, localVideoSource)
         localVideoTrack.addSink(this)
@@ -131,11 +132,20 @@ class RTCPeerClient(
         createAnswer( object: SdpObserver by sdpObserver {
             override fun onCreateSuccess(sessionDescription: SessionDescription?) {
                 setLocalDescription( object : SdpObserver {
-                    override fun onSetFailure(p0: String?) {}
-                    override fun onSetSuccess() {}
-                    override fun onCreateSuccess(p0: SessionDescription?) {}
-                    override fun onCreateFailure(p0: String?) {}
+                    override fun onSetFailure(p0: String?) {
+                        setLogDebug("onCreateSuccess [answer] : 실패 : $p0")
+                    }
+                    override fun onSetSuccess() {
+                        setLogDebug("onCreateSuccess [answer] : onSetSuccess ")
+                    }
+                    override fun onCreateSuccess(p0: SessionDescription?) {
+                        setLogDebug("onCreateSuccess [answer] : 성공 : $p0 ")
+                    }
+                    override fun onCreateFailure(p0: String?) {
+                        setLogDebug("onCreateSuccess [answer] : onCreateFailure : $p0 ")
+                    }
                 },sessionDescription)
+                setLogDebug("onCreateSuccess Offer")
                 sdpObserver.onCreateSuccess(sessionDescription) // 예제에는 이게 없었따.. 테스트해보
             }
         },constraints)
@@ -144,10 +154,18 @@ class RTCPeerClient(
     // sessionDescription to setRemoteDescription
     fun onRemoteSessionReceived( sessionDescription: SessionDescription ){
         peerConnection?.setRemoteDescription( object : SdpObserver {
-            override fun onSetFailure(p0: String?) {}
-            override fun onSetSuccess() {}
-            override fun onCreateSuccess(p0: SessionDescription?) {}
-            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {
+                setLogDebug("onRemoteSessionReceived : 실패 : $p0")
+            }
+            override fun onSetSuccess() {
+                setLogDebug("onRemoteSessionReceived : onSetSuccess")
+            }
+            override fun onCreateSuccess(p0: SessionDescription?) {
+                setLogDebug("onRemoteSessionReceived : 성공 : $p0")
+            }
+            override fun onCreateFailure(p0: String?) {
+                setLogDebug("onRemoteSessionReceived : create 실패 : $p0")
+            }
         }, sessionDescription )
     }
 

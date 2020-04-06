@@ -1,5 +1,7 @@
 package com.example.mzrtc.testsampletry.util
 
+import com.example.mzrtc.model.data.VS_ACTIVITY
+import com.example.mzrtc.model.data.VS_VIEWMODEL
 import com.example.mzrtc.testsampletry.data.SessionDescriptionsType
 import com.example.mzrtc.utils.sdateFormat
 import kotlinx.coroutines.CoroutineScope
@@ -12,7 +14,8 @@ import org.webrtc.SessionDescription
 
 class CoChannel {
 
-    val channel: BroadcastChannel<Any> = ConflatedBroadcastChannel()
+    val vmChannel: BroadcastChannel<Any> = ConflatedBroadcastChannel()
+    val activityChannel: BroadcastChannel<Any> = ConflatedBroadcastChannel()
 //    val channel: BroadcastChannel<String> = ConflatedBroadcastChannel()
 //    val channelDescription: BroadcastChannel<SessionDescription> = ConflatedBroadcastChannel()
 //    val channelCandidate: BroadcastChannel<IceCandidate> = ConflatedBroadcastChannel()
@@ -20,27 +23,46 @@ class CoChannel {
     fun runMain(work: suspend (() -> Unit)) = CoroutineScope(Dispatchers.Main).launch { work() }
 
     // 이벤트를 보낸다.
-    fun sendString(o: String) = run {
-        runMain { channel.send(o) }
+    fun sendString(divide : String, o: String) = run {
+        when(divide){
+            VS_ACTIVITY->{ runMain { activityChannel.send(o) } }
+            VS_VIEWMODEL->{ runMain { vmChannel.send(o) }  }
+            else->{}
+        }
     }
 
     fun sendSessionDescription(
+        divide : String,
         type : String,
         sDescription : SessionDescription
     ) = run {
-        runMain { channel.send(SessionDescriptionsType(type, sDescription)) }
+        when(divide){
+            VS_ACTIVITY->{ runMain { activityChannel.send(SessionDescriptionsType(type, sDescription)) } }
+            VS_VIEWMODEL->{ runMain { vmChannel.send(SessionDescriptionsType(type, sDescription)) }  }
+            else->{}
+        }
     }
 
     fun sendCandidate(
+        divide : String,
         candidate: IceCandidate
     ) = run {
-        runMain { channel.send(candidate) }
+        when(divide){
+            VS_ACTIVITY->{ runMain { activityChannel.send(candidate) } }
+            VS_VIEWMODEL->{ runMain { vmChannel.send(candidate) }  }
+            else->{}
+        }
     }
 
     fun sendMediaStream(
+        divide : String,
         mStream: MediaStream?
     ) = run {
-        runMain { mStream?.let { channel.send(it) } }
+        when(divide){
+            VS_ACTIVITY->{ runMain { mStream?.let { activityChannel.send(it) } } }
+            VS_VIEWMODEL->{ runMain { mStream?.let { vmChannel.send(it) } }  }
+            else->{}
+        }
     }
 
 

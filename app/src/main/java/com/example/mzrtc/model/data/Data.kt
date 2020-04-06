@@ -37,3 +37,10 @@ const val ProxyVideoSink_TAG = "ProxyVideoSink_TAG"
 const val PeerConnectionClient_TAG = "ProxyVideoSink_TAG"
 const val PCRTCClient_TAG = "PCRTCClient_TAG"
 const val VOICECHATACTIVITY_TAG = "VOICECHATACTIVITY_TAG"
+
+
+/**
+ *   채널 구분
+ */
+const val VS_ACTIVITY = "VS_ACTIVITY"
+const val VS_VIEWMODEL = "VS_VIEWMODEL"

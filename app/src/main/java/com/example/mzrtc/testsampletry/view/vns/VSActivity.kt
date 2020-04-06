@@ -46,7 +46,8 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
     var roomId = ""
 
     val channel = App.coChannel
-    val vsViewModel by lazy { VSViewModel(application , url , port, roomId) }
+//    var vsViewModel : VSViewModel? = null
+    val vsViewModel : VSViewModel by lazy { VSViewModel(application , url , port, roomId) }
     val audioManager by lazy {
         (applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).apply {
             mode = AudioManager.FLAG_SHOW_UI
@@ -54,7 +55,7 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
     }
 
     val recevice = CoroutineScope(Dispatchers.Main).async {
-        val receiveData = channel.channel.asFlow()
+        val receiveData = channel.activityChannel.asFlow()
         receiveData.collect {  data -> // 받은 아이들을 수집하여 그것을 진행한다.
             setLogDebug("receive Data : $data")
             when( data ) {
@@ -67,6 +68,7 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
                     destroy()
                 }
                 is MediaStream -> {
+                    setLogDebug("미디어스트림 : ${data.videoTracks} --- ${data.videoTracks[0]}")
                     data?.videoTracks?.get(0)?.addSink(remote_view)
                 }
             }
@@ -104,7 +106,7 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
         if(ContextCompat.checkSelfPermission(this, CAMERA_PERMISSION) != PackageManager.PERMISSION_GRANTED ){
             requestCameraPermission()
         } else {
-            vsViewModel.onCameraPermissionGranted()
+            vsViewModel?.onCameraPermissionGranted()
         }
     }
 
@@ -139,7 +141,7 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if(requestCode == CAMERA_PERMISSION_REQUEST_CODE && grantResults.all { it==PackageManager.PERMISSION_GRANTED }){
-            vsViewModel.onCameraPermissionGranted()
+            vsViewModel?.onCameraPermissionGranted()
         } else {
             Toast.makeText(this, "Camera Permission Denied", Toast.LENGTH_LONG)
         }
@@ -147,16 +149,19 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
 
     override fun onDestroy() {
         super.onDestroy()
-//        destroy()
+        destroy()
     }
 
     fun destroy(){
-//        vsViewModel.destroyPeerAndSocket()
+        vsViewModel?.run {
+            progressStatus.postValue(true)
+            destroyPeerAndSocket()
+        }
         finish()
     }
 
     fun observeLiveData(){
-        vsViewModel.progressStatus.observe(this, Observer {
+        vsViewModel?.progressStatus?.observe(this, Observer {
             if(it) remote_view_loading.visibility = View.VISIBLE
             else remote_view_loading.visibility = View.GONE
         })
