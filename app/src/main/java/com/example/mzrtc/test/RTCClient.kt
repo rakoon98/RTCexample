@@ -151,7 +151,7 @@ class RTCClient(
         peerConnection?.setRemoteDescription(object : SdpObserver {
             override fun onSetFailure(p0: String?) {
             }
- 
+
             override fun onSetSuccess() {
             }
 
