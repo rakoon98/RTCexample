@@ -9,7 +9,6 @@
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
-
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
@@ -19,7 +18,10 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
     <application
+        android:networkSecurityConfig="@xml/network_security_config"
         android:name="com.example.mzrtc.App"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -27,6 +29,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <uses-library android:name="org.apache.http.legacy" android:required="false"/>
+
+
         <activity android:name="com.example.mzrtc.view.ConnectActivity">
         </activity>
         <activity android:name="com.example.mzrtc.view.VoiceChatActivity"/>
@@ -44,7 +50,13 @@
 
         <activity android:name=".testsampletry.view.vns.VSActivity"/>
 
-
+        <receiver
+            android:name=".testsampletry.broad.NetworkChangeReceiver">
+            <intent-filter>
+                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+                <action android:name="android.net.wifi.WIFI_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

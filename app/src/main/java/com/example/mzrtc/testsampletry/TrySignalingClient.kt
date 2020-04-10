@@ -2,29 +2,36 @@ package com.example.mzrtc.testsampletry
 
 import android.util.Log
 import com.example.mzrtc.App
-import com.example.mzrtc.testsampletry.view.TryActivity
-import com.example.mzrtc.utils.getTimeHour
+import com.example.mzrtc.testsampletry.data.*
 import com.example.mzrtc.utils.setLogDebug
 import com.google.gson.Gson
+import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
 import kotlinx.coroutines.*
 import me.amryousef.webrtc_demo.TrySignallingClientListener
-import okhttp3.OkHttpClient
 import org.json.JSONObject
 import org.webrtc.IceCandidate
 import org.webrtc.SessionDescription
 import java.net.URISyntaxException
 import java.security.KeyManagementException
 import java.security.NoSuchAlgorithmException
-import javax.net.ssl.*
-import java.security.cert.X509Certificate
 import kotlin.coroutines.CoroutineContext
 
+
+/**
+ *   각종 캔디 관련 사항은 HTTP API 사용
+ *   1. socket . emit ("call started") : 통화 시작 시점에 클라에서 발송
+ *      -> offer 이후 연결 시작까지 오래 걸린다면 필요함
+ *   2. socket . on ( "ping", { "remain_time" } )
+ *      -> 일정 주기마다 커넥션 생존 확인 / 남은 시간 sync
+ */
 class TrySignalingClient(
-    val activity : TryActivity,
-    private val listener: TrySignallingClientListener
+    private val listener: TrySignallingClientListener,
+    val url : String,
+    val port : String,
+    val roomId : String
 ) : CoroutineScope {
 
     val TAG = this::class.java.simpleName
@@ -44,91 +51,84 @@ class TrySignalingClient(
 
     // 소켓 연결 시도 ??
     private fun connect() = launch {
-        testInitialSocket("https://192.168.0.16", "8889")
+//        testInitialSocket("https://192.168.0.23", "8889")
+        initializeSokcet(url = url , port = port)
     }
 
     // 소켓 초기화
-    fun testInitialSocket(
-        address: String,
+    fun initializeSokcet(
+        url: String,
         port: String
     ) {
         try {
-            Log.d("요호호", "가즈아3 : $address , $port")
-            val socketUrl = "$address:$port"
-            val hostnameVerifier: HostnameVerifier =
-                HostnameVerifier { hostname, session -> true }
-            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
-                override fun checkClientTrusted(
-                    chain: Array<X509Certificate>,
-                    authType: String
-                ) {
-                }
-
-                override fun checkServerTrusted(
-                    chain: Array<X509Certificate>,
-                    authType: String
-                ) {
-                }
-
-                override fun getAcceptedIssuers(): Array<X509Certificate?> {
-                    return arrayOfNulls(0)
-                }
-            })
-            val trustManager =
-                trustAllCerts[0] as X509TrustManager
-            val sslContext = SSLContext.getInstance("SSL")
-            sslContext.init(null, trustAllCerts, null)
-            val sslSocketFactory: SSLSocketFactory = sslContext.socketFactory
-            val okHttpClient = OkHttpClient.Builder()
-                .hostnameVerifier(hostnameVerifier)
-                .sslSocketFactory(sslSocketFactory, trustManager)
-                .build()
-            val opts = IO.Options()
-            opts.callFactory = okHttpClient
-            opts.webSocketFactory = okHttpClient
-            socket = IO.socket(socketUrl, opts)
+//            Log.d("요호호", "가즈아3 : $url , $port")
+//            setLogDebug("연결주소:$url")
+//            val socketUrl = "$url:$port"
+            val socketUrl = url
+//            val hostnameVerifier: HostnameVerifier =
+//                HostnameVerifier { hostname, session -> true }
+//            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
+//                override fun checkClientTrusted(
+//                    chain: Array<X509Certificate>,
+//                    authType: String
+//                ) {
+//                }
+//
+//                override fun checkServerTrusted(
+//                    chain: Array<X509Certificate>,
+//                    authType: String
+//                ) {
+//                }
+//
+//                override fun getAcceptedIssuers(): Array<X509Certificate?> {
+//                    return arrayOfNulls(0)
+//                }
+//            })
+//            val trustManager =
+//                trustAllCerts[0] as X509TrustManager
+//            val sslContext = SSLContext.getInstance("SSL")
+//            sslContext.init(null, trustAllCerts, null)
+//            val sslSocketFactory: SSLSocketFactory = sslContext.socketFactory
+//            val okHttpClient = OkHttpClient.Builder()
+//                .hostnameVerifier(hostnameVerifier)
+//                .sslSocketFactory(sslSocketFactory, trustManager)
+//                .build()
+//            val opts = IO.Options()
+//            opts.callFactory = okHttpClient
+//            opts.webSocketFactory = okHttpClient
+//            socket = IO.socket(socketUrl,opts)
+            socket = IO.socket(socketUrl)
 
             socket?.run {
                 on(Socket.EVENT_CONNECT, cjListener)
                 on(Socket.EVENT_CONNECT_ERROR, errorListener)
                 on(Socket.EVENT_CONNECT_TIMEOUT, errorListener)
+                on(Socket.EVENT_DISCONNECT, errorListener)
+                on(Socket.EVENT_RECONNECT, reConnectListener)
                 on(Socket.EVENT_MESSAGE, msgListener)
-                on("create or join", firstListener)
-                on("receive locations", msgListener)
+                on(ACK_TEST, ackListener)
+
+                on(TERMINATED, terminatedListener)
+                on(MATCHED, matchListener)
+                on(JOIN,joinListener)
+                on(TIMEOUT,timeoutListener)
+
+//                on("created", createdListener)
+//                on("full", fullListener)
+//                on("join", joinListener)
+//                on("joined", joinedListener)
 
                 connect()
             }
         } catch (e: URISyntaxException) {
+            setLogDebug("URISyntaxException : $e")
             throw RuntimeException(e)
         } catch (e: NoSuchAlgorithmException) {
+            setLogDebug("NoSuchAlgorithmException : $e")
             e.printStackTrace()
         } catch (e: KeyManagementException) {
+            setLogDebug("KeyManagementException : $e")
             e.printStackTrace()
-        }
-    }
-
-
-    val firstListener = Emitter.Listener { con ->
-        socket?.let {
-            Log.d("요호호", "???")
-            it.emit(Socket.EVENT_MESSAGE, "got user media")
-        }
-    }
-    val cjListener = Emitter.Listener { coj ->
-        coj.forEachIndexed { index, any ->
-            Log.d("요호호,", "cjListener : $any")
-        }
-        callMessage()
-    }
-    val msgListener = Emitter.Listener{ msg ->
-        msg.forEach {
-            Log.d("요호호,", "msgListener : $it")
-            process("$it")
-        }
-    }
-    val errorListener = Emitter.Listener { error ->
-        error.forEachIndexed { index, error_ ->
-            Log.d("요호호", "요호호 : $error_")
         }
     }
 
@@ -136,14 +136,38 @@ class TrySignalingClient(
     fun callMessage() {
         try {
             socket?.run {
-                emit("create or join", "hi")
-                emit(Socket.EVENT_MESSAGE, "got user media")
-                Log.d(TAG, "요호호")
+                emit("join","{token= ~~ / password=~~ }" , object: Ack {
+                    override fun call(vararg args: Any?) {
+                        val backInfo  = args[args.size - 1]
+                        var ackJson = JSONObject("$backInfo")
+                        when(ackJson["success"]){
+                            true,"true" -> { /** 대기상태로 넘어감 **/ }
+                            else ->{ /** 에러처리 (밖으로?) **/ }
+                            /** 빠른매칭은 HTTP 처리로!! **/
+                        }
+                    }
+                })
+            }
+
+
+
+            socket?.run {
+                setLogDebug("socket is connect create : create or join")
+                emit("create or join", roomId)
+                emit(Socket.EVENT_MESSAGE, GOT_USER_MEDIA)
+
+////                ACK 잘오는지 테스트 하였음.
+//                emit(ACK_TEST, listOf("123",123, mapOf<String,Int>("test" to 9898) , TestData("테스트합니다",123, TestData("테스트안에테스트",19048,"오호Any",172389127L) , 82746758134981394L)), object : Ack {
+//                    override fun call(vararg args: Any?) {
+//                        val backInfo = args[args.size - 1]
+//                        setLogDebug("ACK_TEST_in_backInfo : $backInfo")
+//                    }
+//                })
             } ?: kotlin.run {
-                Log.d(TAG, "요호호 socket is null")
+                setLogDebug("socket is null")
             }
         } catch (e: Exception) {
-            Log.d(TAG, "${e.message}")
+            setLogDebug("socket error : $e")
         }
     }
 
@@ -152,8 +176,6 @@ class TrySignalingClient(
     fun send(dataObject: Any?) = runBlocking {
         socket?.run {
             val json = gson.toJson(dataObject)
-            Log.d("요호호", "가즈아 runblocking : $json")
-
             when {
                 json.toLowerCase().contains("offer") -> {
                     Log.d("요호호", "offerEncoding -> $json")
@@ -165,10 +187,10 @@ class TrySignalingClient(
                                 put("sdp", dataObject.description)
                             }
 
-                            Log.d("요호호", "offer data -> ${dataObject.description}")
+                            setLogDebug("offer data -> ${dataObject.description}")
                             emit(Socket.EVENT_MESSAGE, jsonObject)
                         } else {
-                            Log.d("요호호", "offer data -> not a SessionDescription")
+                            setLogDebug("receive offer but is not SessionDescription")
                         }
                     } catch (e: Exception) {
                         Log.d("요호호", "offer data error -> $e")
@@ -180,15 +202,15 @@ class TrySignalingClient(
                             put("type", "answer")
                             put("sdp", dataObject.description)
                         }
+                        setLogDebug("$TAG : answer data -> ${dataObject.description}")
 
-                        Log.d("요호호", "answer data -> ${dataObject.description}")
                         emit(Socket.EVENT_MESSAGE, jsonObject)
                     } else {
-
+                        setLogDebug("receive answer but is not SessionDescription")
                     }
                 }
                 json.toLowerCase().contains("candidate") -> {
-                    Log.d("요호호", "candidate -> $json")
+                    setLogDebug("$TAG : cadidate -> $json")
                     var can = (dataObject as IceCandidate)
                     var jsonObject = JSONObject().apply {
                         put("type", "candidate")
@@ -199,34 +221,30 @@ class TrySignalingClient(
                     emit("message", jsonObject)
                 }
                 else -> {
-                    Log.d("요호호", "ELSE -> $json")
+                    setLogDebug("SendTime when else : $json")
                 }
             }
-
         } ?: run {
-            Log.d(TAG, "요호호 socket is null")
+            setLogDebug("socket is null")
         }
     }
 
 
     fun process(data: Any) {
-        Log.d("요호호", "가즈아 process : $data")
+        setLogDebug("process : $data")
         when (data) {
             is String -> {
                 when (data) {
-                    "got user media" -> {
+                    GOT_USER_MEDIA -> {
                         launch {
-                            activity.rtcClient.run {
-                                Log.d("요호호", "시작")
-                                setLogDebug( getTimeHour() )
-                                call(activity.sdpObserver)
-//                                channel.run { CREATE_OFFER }
-                            }
+                            channel.sendString(GOT_USER_MEDIA)
                         }
                     }
-                    "bye" -> {
-                        Log.d("요호호", "client said : bye -> 상대방이 나갔습니다")
-                        onDestroy()
+                    BYE -> {
+                        launch {
+                            channel.sendString(BYE)
+                            onDestroy()
+                        }
                     }
                     else -> {
                         process_any(data)
@@ -241,14 +259,12 @@ class TrySignalingClient(
         try{
             val data_ = JSONObject("$data")
             // offer, answer, candidate 을 받았을때.
-            Log.d("요호호", "process_any ==>> data = $data_ /// type = ${data_["type"]}")
             when (data_["type"]) {
                 "offer" -> {
                     var sDescription = SessionDescription(
                         SessionDescription.Type.OFFER,
                         "${data_["sdp"]}"
                     )
-                    Log.d("요호호", "offer received sdp = $sDescription")
                     listener.onOfferReceived(sDescription)
                 }
                 "answer" -> {
@@ -256,9 +272,7 @@ class TrySignalingClient(
                         SessionDescription.Type.ANSWER,
                         "${data_["sdp"]}"
                     )
-                    Log.d("요호호", "answer received sdp = $sDescription")
                     listener.onAnswerReceived(sDescription)
-//                    activity.rtcClient.answer(sdpObserver = activity.sdpObserver)
                 }
                 "candidate" -> {
                     // String sdpMid, int sdpMLineIndex, String sdp
@@ -270,11 +284,11 @@ class TrySignalingClient(
                     listener.onIceCandidateReceived(candidate)
                 }
                 else->{
-                    Log.d("요호호", "process_any : received from ${data_["type"]}")
+                    setLogDebug("process_any : received from ${data_["type"]}")
                 }
             }
         } catch (e:Exception){
-            Log.d("요호호", "error : $e")
+            setLogDebug("error : $e")
         }
     }
 
@@ -283,13 +297,85 @@ class TrySignalingClient(
     fun onDestroy() {
         socket?.run {
             send("bye")
+            send(HANGUP)
             off(Socket.EVENT_CONNECT, cjListener)
             off(Socket.EVENT_CONNECT_ERROR, errorListener)
             off(Socket.EVENT_CONNECT_TIMEOUT, errorListener)
             off(Socket.EVENT_MESSAGE, msgListener)
+
+//            off("created", createdListener)
+//            off("full", fullListener)
+//            off("join", joinListener)
+//            off("joined", joinedListener)
+
             disconnect()
         }
     }
 
+
+    /**
+     *  socket io listener
+     */
+    val reConnectListener = Emitter.Listener { con ->
+        socket?.let { reSocket ->
+            setLogDebug("소켓현황[reConnectListener]: 기존:$socket ?= 리스너:$reSocket ==>  ${ socket==reSocket }")
+            setLogDebug("reConnect Socket -> $reSocket")
+            setLogDebug("SocketIsConnected : ${reSocket.connected()}")
+//            listener.reConnected()
+        }
+    }
+    val cjListener = Emitter.Listener { coj ->
+        socket?.let { socket_ ->
+            setLogDebug("소켓현황[cjListener]: 기존:$socket ?= 리스너:$socket_ ==>  ${ socket==socket_ }")
+            setLogDebug("Connect Socket -> $socket_")
+            setLogDebug("SocketIsConnected : ${socket_.connected()}")
+        }
+        callMessage()
+    }
+    val joinListener = Emitter.Listener {  join ->
+        join.forEach {
+
+        }
+    }
+    val matchListener = Emitter.Listener {  match ->
+        match.forEach {
+            // 상대방 기본 프로필 조회 HTTP API 콜
+            // offer = true 일때 offer 발행 , false 일때 answer 발행
+
+        }
+    }
+    val terminatedListener = Emitter.Listener { terminated ->
+        terminated.forEach {
+            // 상대방이 연결 종료해서 연결 끊기
+        }
+    }
+    val timeoutListener = Emitter.Listener { timeout ->
+        timeout.forEach {
+            // 시간 제한으로 인한 연결 끊기
+        }
+    }
+
+    val msgListener = Emitter.Listener{ msg ->
+        msg.forEach {
+            process("$it")
+        }
+    }
+    val errorListener = Emitter.Listener { error ->
+        error.forEachIndexed { index, error_ ->
+            setLogDebug("socket received error : $index --> $error_")
+        }
+    }
+    val ackListener = Emitter.Listener { args ->
+        setLogDebug("ACK_TEST_in_listener : $args")
+        if( args is Ack ) {
+            val ack = args[args.size - 1] as Ack
+            ack.call()
+        }
+    }
+
+//    val fullListener = Emitter.Listener {   info ->  info.forEach { msg -> setLogDebug("full  :  $msg") }   }
+//    val createdListener = Emitter.Listener {  info ->  info.forEach { msg -> setLogDebug("created  :  $msg") }  }
+//    val joinListener = Emitter.Listener { info ->  info.forEach { msg -> setLogDebug("join  :  $msg") } }
+//    val joinedListener = Emitter.Listener {   info ->  info.forEach { msg -> setLogDebug("joined  :  $msg") } }
 }
 

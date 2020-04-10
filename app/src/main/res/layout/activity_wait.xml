@@ -16,7 +16,7 @@
         android:layout_height="wrap_content"/>
 
     <androidx.appcompat.widget.AppCompatButton
-        android:text="연결!!"
+        android:text="연결 : 메인"
         android:id="@+id/connectCallBnt1"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -35,30 +35,32 @@
         android:layout_height="wrap_content"/>
 
     <androidx.appcompat.widget.AppCompatEditText
+        android:id="@+id/urlData_"
         android:layout_margin="10dp"
+        android:text="https://192.168.0.23"
+        app:layout_constraintBottom_toTopOf="@id/portData_"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/port_"
         app:layout_constraintEnd_toEndOf="parent"
-        android:id="@+id/url_"
-        android:text="https://192.168.0.16"
         android:layout_width="0dp"
         android:layout_height="wrap_content"/>
+
     <androidx.appcompat.widget.AppCompatEditText
-        android:layout_margin="10dp"
+        android:id="@+id/portData_"
+        app:layout_constraintBottom_toTopOf="@id/roomIdData_"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/roomId_"
-        android:id="@+id/port_"
         android:text="8889"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"/>
-    <androidx.appcompat.widget.AppCompatEditText
         android:layout_margin="10dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:id="@+id/roomId_"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"/>
+
+    <androidx.appcompat.widget.AppCompatEditText
         android:text="hi"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:id="@+id/roomIdData_"
+        android:layout_margin="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         android:layout_width="0dp"
         android:layout_height="wrap_content"/>
 

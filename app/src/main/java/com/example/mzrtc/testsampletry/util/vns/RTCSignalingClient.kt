@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import java.security.cert.X509Certificate
 import javax.net.ssl.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class RTCSignalingClient(
     var url :String,
@@ -18,21 +20,27 @@ class RTCSignalingClient(
     var roomId: String
 ) {
     // 이벤트 전달 코루틴 채널
-    val channel = App.coChannel
     var socket: Socket? = null
     var socketOnListener :SocketOnListener? = null
 
     init {
-//        connect("https://192.168.0.16", "8889", "hi")
-//        connect("https://192.168.0.223", "8889", "")
+////        connect("https://192.168.0.16", "8889", "hi")
+////        connect("https://192.168.0.223", "8889", "")
+//
         connect(url,port,roomId)
     }
 
     fun connect (
-        address: String, port : String, roomId : String
-    ) = CoroutineScope(Dispatchers.Main).launch {
-        initialSocket(address,port, roomId)
+        url: String,
+        port : String,
+        roomId : String
+    ) = CoroutineScope(Dispatchers.IO).launch {
+        initialSocket(url!!,port!!, roomId!!)
     }
+//            = suspendCoroutine<Boolean> {
+//        if( url==null || port==null || roomId == null ) {it.resume(false); setLogDebug("연결정보에러") }
+//        else { initialSocket(url,port, roomId); it.resume(true) }
+//    }
 
     private fun initialSocket( address: String, port : String, roomId : String ){
         try {

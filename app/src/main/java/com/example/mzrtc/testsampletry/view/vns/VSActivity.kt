@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Bundle
 import android.util.Log
+import android.view.SurfaceView
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -21,6 +22,7 @@ import com.example.mzrtc.testsampletry.util.vns.RTCPeerClient
 import com.example.mzrtc.testsampletry.util.vns.RTCSignalingClient
 import com.example.mzrtc.testsampletry.viewmodel.VSViewModel
 import com.example.mzrtc.utils.setLogDebug
+import kotlinx.android.synthetic.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +34,7 @@ import me.amryousef.webrtc_demo.PeerConnectionObserver
 import org.webrtc.IceCandidate
 import org.webrtc.MediaStream
 import org.webrtc.SessionDescription
+import org.webrtc.SurfaceViewRenderer
 
 class VSActivity : AppCompatActivity(), LifecycleOwner {
 
@@ -46,7 +49,8 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
     var roomId = ""
 
     val channel = App.coChannel
-    val vsViewModel by lazy { VSViewModel(application , url , port, roomId) }
+//    var vsViewModel : VSViewModel? = null
+    val vsViewModel : VSViewModel by lazy { VSViewModel(application , url , port, roomId) }
     val audioManager by lazy {
         (applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).apply {
             mode = AudioManager.FLAG_SHOW_UI
@@ -56,22 +60,26 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
     val recevice = CoroutineScope(Dispatchers.Main).async {
         val receiveData = channel.channel.asFlow()
         receiveData.collect {  data -> // 받은 아이들을 수집하여 그것을 진행한다.
-            setLogDebug("receive Data : $data")
+            setLogDebug("receive Data activity : $data")
             when( data ) {
                 "initView" -> {
                     vsViewModel.run {
-                        setInitRender( local_view, remote_view )
+                        setInitRender( localSurfaceViewRender, remoteSurfaceViewRender )
                     }
                 }
                 DESTROY -> {
                     destroy()
                 }
                 is MediaStream -> {
-                    data?.videoTracks?.get(0)?.addSink(remote_view)
+                    setLogDebug("미디어스트림 : ${data.videoTracks} --- ${data.videoTracks[0]}")
+                    data?.videoTracks?.get(0)?.addSink(remoteSurfaceViewRender)
                 }
             }
         }
     }
+
+    var localSurfaceViewRender : SurfaceViewRenderer? = null
+    var remoteSurfaceViewRender : SurfaceViewRenderer? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,18 +91,23 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
              port = getStringExtra("port")
              roomId = getStringExtra("roomId")
             setLogDebug("url = $url , port = $port , roomId = $roomId")
+
+            localSurfaceViewRender = findViewById(R.id.local_view)
+            remoteSurfaceViewRender = findViewById(R.id.remote_view)
         }
 
-        audioBtn.setOnCheckedChangeListener { buttonView, isChecked ->
-            when(isChecked){
-                true->{ audioManager.isSpeakerphoneOn = true }
-                false->{ audioManager.isSpeakerphoneOn = false }
-            }
-        }
+//        audioBtn.setOnCheckedChangeListener { buttonView, isChecked ->
+//            when(isChecked){
+//                true->{ audioManager.isSpeakerphoneOn = true }
+//                false->{ audioManager.isSpeakerphoneOn = false }
+//            }
+//        }
 
         observeLiveData()
-        // 카메라 권한 가져오고 다음일 진행하는 부분
-        // 처음에 음성으로 진행하면 필요없
+// ㅁㄴ이ㅑ러매ㅑ덱ㅎㅁ내랴;ㅓㅁㄱㄷㅈㅎawefasdfasdfasdf
+
+        // 카메 권한 가져오고 다음일 진행하는 부분
+        // 처음에 음성으로 진행하면 필요없는듯
         checkCameraPermission()
     }
 
@@ -104,7 +117,7 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
         if(ContextCompat.checkSelfPermission(this, CAMERA_PERMISSION) != PackageManager.PERMISSION_GRANTED ){
             requestCameraPermission()
         } else {
-            vsViewModel.onCameraPermissionGranted()
+            vsViewModel?.onCameraPermissionGranted()
         }
     }
 
@@ -139,7 +152,7 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if(requestCode == CAMERA_PERMISSION_REQUEST_CODE && grantResults.all { it==PackageManager.PERMISSION_GRANTED }){
-            vsViewModel.onCameraPermissionGranted()
+            vsViewModel?.onCameraPermissionGranted()
         } else {
             Toast.makeText(this, "Camera Permission Denied", Toast.LENGTH_LONG)
         }
@@ -147,16 +160,32 @@ class VSActivity : AppCompatActivity(), LifecycleOwner {
 
     override fun onDestroy() {
         super.onDestroy()
-//        destroy()
+        destroy()
     }
 
     fun destroy(){
-//        vsViewModel.destroyPeerAndSocket()
+        vsViewModel?.run {
+            progressStatus.postValue(true)
+            destroyPeerAndSocket()
+        }
+
+        if(localSurfaceViewRender!=null){
+            localSurfaceViewRender!!.release()
+            localSurfaceViewRender!!.clearFindViewByIdCache()
+            localSurfaceViewRender = null
+        }
+
+        if(remoteSurfaceViewRender!=null){
+            remoteSurfaceViewRender!!.release()
+            remoteSurfaceViewRender!!.clearFindViewByIdCache()
+            remoteSurfaceViewRender = null
+        }
+
         finish()
     }
 
     fun observeLiveData(){
-        vsViewModel.progressStatus.observe(this, Observer {
+        vsViewModel?.progressStatus?.observe(this, Observer {
             if(it) remote_view_loading.visibility = View.VISIBLE
             else remote_view_loading.visibility = View.GONE
         })

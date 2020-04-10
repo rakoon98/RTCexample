@@ -3,42 +3,33 @@ package com.example.mzrtc.testsampletry.util.vns
 import android.app.Application
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
-import com.example.mzrtc.App
 import com.example.mzrtc.testsampletry.TryRTCClient
 import com.example.mzrtc.utils.setLogDebug
 import org.webrtc.*
 import java.lang.IllegalStateException
 
-class RTCPeerClient(
+class RTCPeerClient2(
     val context : Application,
     val observer : PeerConnection.Observer
 ) {
 
-    companion object {
-        const val LOCAL_STREAM_ID = "ARDAMSs0"
-        const val VIDEO_TRACK_ID = "ARDAMSv0"
-        const val AUDIO_TRACK_ID = "ARDAMSa0"
-    }
-
-    // coroutines channel
-    val channel = App.coChannel.channel
-
-    // eglbase
-    private val rootEglbase : EglBase = EglBase.create()
+    private val rootEglbase = EglBase.create()
 
     // ice Candidate stun server
     private val iceServer = listOf(PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer())
 
-    // peerConnections
-    private val peerConnectionFactory by lazy { buildPeerConnectionFactory() }
-    private val peerConnection by lazy { observer.buildPeerConnection() }
 
-    // media
-    private var surfaceTextureHelper :  SurfaceTextureHelper? = null
-    private val videoCapturer by lazy { context.getVideoCapturer() }
-    private val localVideoSource by lazy { peerConnectionFactory.createVideoSource(false) }
-    private val localAudioSource by lazy { peerConnectionFactory.createAudioSource(MediaConstraints()) }
+    private var peerConnectionFactory : PeerConnectionFactory? = null
+    private var peerConnection : PeerConnection? = null
+
+    private var surfaceTextureHelper : SurfaceTextureHelper? = null
+    private var videoCapturer : VideoCapturer? = null
+    private var localVideoSource : VideoSource? = null
+    private var localAudioSource : AudioSource? = null
+    private var localVideoTrack : VideoTrack? = null
+    private var localAudioTrack : AudioTrack? = null
+    private var localStream : MediaStream? = null
+
     private val constraints = MediaConstraints().apply { // mediaConstraints
         mandatory.add( MediaConstraints.KeyValuePair("OfferToReceiveVideo","true") )
         mandatory.add(MediaConstraints.KeyValuePair("offerToReceiveAudio", "true"))
@@ -46,35 +37,43 @@ class RTCPeerClient(
     }
 
     init {
-        context.initPeerconnectionFactory()
+        peerConnection = observer.buildPeerConnection()
+        context.initPeerConnectionFactory()
     }
 
-    // peerConnection initialize
-    fun Application.initPeerconnectionFactory(  )  {
+    fun Application.initPeerConnectionFactory(){
         val options =
             PeerConnectionFactory.InitializationOptions.builder(this)
-            .setEnableInternalTracer(true)
-            .setFieldTrials("WebRTC-H264HighProfile/Enabled/")
-            .createInitializationOptions()
+                .setEnableInternalTracer(true)
+                .setFieldTrials("WebRTC-H264HighProfile/Enabled/")
+                .createInitializationOptions()
 
         PeerConnectionFactory.initialize(options)
+
+        peerConnectionFactory = observer.buildPeerConnectionFactory()
     }
 
     // connectionFactory build
-    fun buildPeerConnectionFactory() : PeerConnectionFactory {
+    fun PeerConnection.Observer.buildPeerConnectionFactory() : PeerConnectionFactory {
         val factory = PeerConnectionFactory.builder()
             .setVideoDecoderFactory(DefaultVideoDecoderFactory(rootEglbase.eglBaseContext))
             .setVideoEncoderFactory(DefaultVideoEncoderFactory(rootEglbase.eglBaseContext, true,true))
-        // 오디오는 ???
+            // 오디오는 ???
             .setOptions(PeerConnectionFactory.Options().apply { networkIgnoreMask = 0 /** 인터넷 상태 관련 체크인듯. **/})
             .createPeerConnectionFactory()
+
+        localVideoSource = factory.createVideoSource(false)
+        localAudioSource = factory.createAudioSource(MediaConstraints())
 
         return factory
     }
 
+
     // peerConnnection build
     fun PeerConnection.Observer.buildPeerConnection() : PeerConnection? =
-        peerConnectionFactory.createPeerConnection( PeerConnection.RTCConfiguration(iceServer).apply { enableDtlsSrtp = true } , this )
+        peerConnectionFactory?.createPeerConnection( PeerConnection.RTCConfiguration(iceServer).apply { enableDtlsSrtp = true } , this )
+
+
 
     // surfaceViewRender init view
     fun SurfaceViewRenderer.initSurfaceView() = kotlin.run {
@@ -82,6 +81,7 @@ class RTCPeerClient(
         setEnableHardwareScaler(true)
         init( rootEglbase.eglBaseContext, null )
     }
+
 
     // initialize video capturer
     fun Context.getVideoCapturer() =
@@ -93,25 +93,37 @@ class RTCPeerClient(
             } ?: throw IllegalStateException()
         }
 
+
     // start local video capturer
     fun SurfaceViewRenderer.startLocalVideoCapture(){
         surfaceTextureHelper = SurfaceTextureHelper.create(Thread.currentThread().name, rootEglbase.eglBaseContext)
-        (videoCapturer as VideoCapturer).initialize(surfaceTextureHelper, this.context, localVideoSource.capturerObserver)
-        videoCapturer.startCapture(240, 240, 60)
-
-        val localVideoTrack = peerConnectionFactory.createVideoTrack(TryRTCClient.VIDEO_TRACK_ID, localVideoSource)
-        localVideoTrack.addSink(this)
-
-        val localAudioTrack = peerConnectionFactory.createAudioTrack(TryRTCClient.AUDIO_TRACK_ID, localAudioSource )
-        localAudioTrack.setEnabled(true)
-
-        val localStream = peerConnectionFactory.createLocalMediaStream(TryRTCClient.LOCAL_STREAM_ID)
-        localStream.addTrack(localVideoTrack)
-        localStream.addTrack(localAudioTrack)
-
-        peerConnection?.addStream(localStream) ?: run{
-            Log.d("요호호","peerconnection null")
+        videoCapturer?.run {
+            initialize(surfaceTextureHelper, context, localVideoSource?.capturerObserver)
+            startCapture(240, 240, 60)
+        } ?: kotlin.run {
+            videoCapturer = context.getVideoCapturer()
+            (videoCapturer as VideoCapturer).run {
+                initialize(surfaceTextureHelper, context, localVideoSource?.capturerObserver)
+                startCapture(240, 240, 60)
+            }
         }
+
+
+
+        localVideoTrack = peerConnectionFactory?.createVideoTrack(TryRTCClient.VIDEO_TRACK_ID, localVideoSource)?.apply {
+            addSink(this@startLocalVideoCapture)
+        }
+
+        localAudioTrack = peerConnectionFactory?.createAudioTrack(TryRTCClient.AUDIO_TRACK_ID, localAudioSource )?.apply {
+            setEnabled(true)
+        }
+
+        localStream = peerConnectionFactory?.createLocalMediaStream(TryRTCClient.LOCAL_STREAM_ID)?.apply {
+            addTrack(localVideoTrack)
+            addTrack(localAudioTrack)
+        }
+
+        peerConnection?.addStream(localStream)
     }
 
     // peerConnection createOffer with sdpObserver
@@ -156,7 +168,11 @@ class RTCPeerClient(
     }
 
     // call to method ( call or answer )
-    fun SdpObserver.call() = peerConnection?.run {  call(sdpObserver = this@call) }
+    fun SdpObserver.call() = peerConnection?.run {  call(sdpObserver = this@call) }?: kotlin.run {
+        peerConnection = observer.buildPeerConnection()
+        setLogDebug("뚱 : peerConnection is null")
+        peerConnection!!.call(this@call)
+    }
     fun SdpObserver.answer() = peerConnection?.run {  answer(sdpObserver = this@answer) }
 
     // peerConnection Add IceCandidates
@@ -165,13 +181,47 @@ class RTCPeerClient(
             peerConnection?.addIceCandidate(candidate)
         }
 
-    fun destroy(){
-        // 해제
-        surfaceTextureHelper?.dispose()
-        peerConnection?.dispose()
 
-        videoCapturer?.stopCapture()
-        videoCapturer?.dispose()
+
+    fun destroy(){
+        if(peerConnection!=null){
+            peerConnection!!.dispose()
+            peerConnection = null
+        }
+
+        if(localAudioSource!=null){
+            localAudioSource!!.dispose()
+            localAudioSource = null
+        }
+
+        if(videoCapturer!=null){
+            try{
+                videoCapturer!!.stopCapture()
+            }catch (e:Exception){
+                setLogDebug("비디오 캡처 스탑 에러 : $e")
+            }
+            videoCapturer!!.dispose()
+            videoCapturer = null
+        }
+
+        if(localVideoSource!=null){
+            localVideoSource!!.dispose()
+            localVideoSource = null
+        }
+
+        if(surfaceTextureHelper!=null){
+            surfaceTextureHelper!!.dispose()
+            surfaceTextureHelper = null
+        }
+
+        if(peerConnectionFactory!=null){
+            peerConnectionFactory!!.dispose()
+            peerConnectionFactory = null
+        }
+
+        PeerConnectionFactory.stopInternalTracingCapture()
+        PeerConnectionFactory.shutdownInternalTracer()
     }
+
 
 }

@@ -13,7 +13,7 @@ import org.webrtc.IceCandidate
 import org.webrtc.SessionDescription
 
 /**
- *  socket listener not implementation it is listener of socket.io
+ *   socket listener not implementation it is listener of socket.io
  */
 class SocketOnListener(
     val socket: Socket,
@@ -70,7 +70,7 @@ class SocketOnListener(
                                 }
                                 setLogDebug("data is $dataObject")
                                 emit(Socket.EVENT_MESSAGE, jsonObject)
-                            } else {
+                                } else {
                                 // 가져온 데이터가 SessionDescription 이 아니라서 무효처리
                             }
                         }
@@ -114,17 +114,18 @@ class SocketOnListener(
 
     // 메시지를 받는것에 대한 프로세싱 하는 메소드
     private fun processingGetMessage(data: Any) {
-        setLogDebug("$data")
         when (data) {
             is String -> {
                 when (data) {
                     GOT_USER_MEDIA -> {
                         channel.run {
+                            setLogDebug("processingGetMessage : $data")
                             runMain { sendString(CREATE_OFFER) }
                         }
                     }
                     BYE -> {
                         channel.run {
+                            setLogDebug("processingGetMessage : $data")
                             runMain { sendString(DESTROY) }
                         }
                     }
@@ -143,7 +144,7 @@ class SocketOnListener(
                         ANSWER -> { // answer 를 받았으면 answer SessionDescription 을 생성하여 전달
                             var sdp = info["sdp"]
                             var sessionDescription = SessionDescription( SessionDescription.Type.ANSWER, "$sdp" )
-                            channel.run { runMain { sendSessionDescription(ANSWER, sessionDescription) } }
+                            channel.run { setLogDebug("send sd answer"); runMain { sendSessionDescription(ANSWER, sessionDescription) } }
                         }
                         CANDIDATE -> { // candidate 를 받았으면 IceCandidate 를 생성하여 전달
                             var id = "${info["id"]}"

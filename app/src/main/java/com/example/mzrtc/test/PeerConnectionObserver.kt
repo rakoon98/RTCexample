@@ -1,10 +1,6 @@
 package me.amryousef.webrtc_demo
 
-import org.webrtc.DataChannel
-import org.webrtc.IceCandidate
-import org.webrtc.MediaStream
-import org.webrtc.PeerConnection
-import org.webrtc.RtpReceiver
+import org.webrtc.*
 
 open class PeerConnectionObserver : PeerConnection.Observer {
     override fun onIceCandidate(p0: IceCandidate?) {
@@ -38,5 +34,13 @@ open class PeerConnectionObserver : PeerConnection.Observer {
     }
 
     override fun onAddTrack(p0: RtpReceiver?, p1: Array<out MediaStream>?) {
+    }
+
+    override fun onStandardizedIceConnectionChange(newState: PeerConnection.IceConnectionState?) {
+        super.onStandardizedIceConnectionChange(newState)
+    }
+
+    override fun onSelectedCandidatePairChanged(event: CandidatePairChangeEvent?) {
+        super.onSelectedCandidatePairChanged(event)
     }
 }
