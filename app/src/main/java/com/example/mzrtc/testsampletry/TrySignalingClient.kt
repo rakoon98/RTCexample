@@ -149,8 +149,6 @@ class TrySignalingClient(
                 })
             }
 
-
-
             socket?.run {
                 setLogDebug("socket is connect create : create or join")
                 emit("create or join", roomId)
@@ -174,20 +172,19 @@ class TrySignalingClient(
 
     // 메시지 받으면 메시지 전송?
     fun send(dataObject: Any?) = runBlocking {
+        setLogDebug("send로 넘어온 데이터 : $dataObject")
         socket?.run {
             val json = gson.toJson(dataObject)
             when {
                 json.toLowerCase().contains("offer") -> {
-                    Log.d("요호호", "offerEncoding -> $json")
-//                        var json_ = gson.fromJson("$dataObject", JsonObject::class.java)
+                    setLogDebug("$TAG : offerEncoding -> $json")
+
                     try {
                         if (dataObject is SessionDescription) {
                             var jsonObject = JSONObject().apply {
                                 put("type", "offer")
                                 put("sdp", dataObject.description)
                             }
-
-                            setLogDebug("offer data -> ${dataObject.description}")
                             emit(Socket.EVENT_MESSAGE, jsonObject)
                         } else {
                             setLogDebug("receive offer but is not SessionDescription")
@@ -341,7 +338,19 @@ class TrySignalingClient(
         match.forEach {
             // 상대방 기본 프로필 조회 HTTP API 콜
             // offer = true 일때 offer 발행 , false 일때 answer 발행
-
+            setLogDebug("matched event : $it")
+            try{
+                val json = JSONObject("$it")
+//                val offer = json.getBoolean("offer")
+                val offer = false
+                if(offer){
+                    launch { channel.sendString(CREATE_OFFER) }
+                } else {
+                    launch { channel.sendString(CREATE_ANSWER) }
+                }
+            } catch ( e : Exception ){
+                setLogDebug("match error : $e")
+            }
         }
     }
     val terminatedListener = Emitter.Listener { terminated ->

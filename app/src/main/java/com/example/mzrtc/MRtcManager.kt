@@ -47,16 +47,29 @@ class MRtcManager(
 //                            rtcClient?.run { /** rtcClient 자원해제 하는 부분 추가 **/ }
 //                            signalingClient?.run { onDestroy() }
                         }
+                        CREATE_OFFER -> {
+                            setLogDebug("FLOW_CHECK_CREATE_OFFER")
+                            rtcClient?.call(sdpObserver)
+                        }
+                        CREATE_ANSWER -> {
+                            setLogDebug("FLOW_CHECK_CREATE_ANSWER")
+                            rtcClient?.answer(sdpObserver)
+                        }
                     }
                 }
                 else -> {
                     when(data){
                         CREATE_OFFER -> {
-                            setLogDebug("CREATE_OFFER")
-                            rtcClient?.call(sdpObserver)}
+                            setLogDebug("FLOW_CHECK_CREATE_OFFER")
+                            rtcClient?.call(sdpObserver)
+                        }
+                        CREATE_ANSWER -> {
+                            setLogDebug("FLOW_CHECK_CREATE_ANSWER")
+                            rtcClient?.answer(sdpObserver)
                         }
                     }
                 }
+            }
         }
     }
 

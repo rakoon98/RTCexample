@@ -13,13 +13,14 @@ import kotlinx.android.synthetic.main.activity_wait.*
 class WaitActivity : AppCompatActivity() {
 
     var awsUrl = "http://nd-voice-chat-598404652.ap-northeast-2.elb.amazonaws.com"
+    var flowTestAwsUrl = "http://ec2-54-180-123-99.ap-northeast-2.compute.amazonaws.com:8889"
     var myurl = "https://192.168.0.23"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_wait)
 
-        urlData_.setText(awsUrl)
+        urlData_.setText(flowTestAwsUrl)
         connectCallBnt1.setOnClickListener {
             startActivity(
                 Intent(this, TryActivity::class.java).apply {

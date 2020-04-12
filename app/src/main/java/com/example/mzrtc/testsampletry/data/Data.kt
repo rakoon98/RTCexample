@@ -2,6 +2,7 @@ package com.example.mzrtc.testsampletry.data
 
 const val LOG_DEBUG_TITLE = "DEBUG_MESSAGE_LOG"
 const val CREATE_OFFER = "createOffer"
+const val CREATE_ANSWER = "createAnswer"
 
 const val GOT_USER_MEDIA = "got user media"
 const val CREATE_OR_JOIN = "create or join"
